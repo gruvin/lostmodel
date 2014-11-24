@@ -1,0 +1,122 @@
+Cmp-Mod V01 Created by CvPcb (2013-07-24 BZR 4024)-stable date = Sun 23 Nov 2014 02:10:43 PM NZDT
+
+BeginCmp
+TimeStamp = /4ED087A6;
+Reference = C1;
+ValeurCmp = 0u1;
+IdModule  = SM0603_GRUVIN;
+EndCmp
+
+BeginCmp
+TimeStamp = /4ED087CB;
+Reference = C2;
+ValeurCmp = 22u;
+IdModule  = SM1210_GRUVIN_POL;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743A2;
+Reference = D1;
+ValeurCmp = RED;
+IdModule  = LED-0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743A4;
+Reference = D2;
+ValeurCmp = YELLOW;
+IdModule  = LED-0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743A6;
+Reference = D3;
+ValeurCmp = GREEN;
+IdModule  = LED-0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /4ECC4939;
+Reference = IC1;
+ValeurCmp = ATMEGA88P;
+IdModule  = MLF-32_2mmVIA_SINK;
+EndCmp
+
+BeginCmp
+TimeStamp = /5470FFF1;
+Reference = K1;
+ValeurCmp = CONN_3;
+IdModule  = SIL-3;
+EndCmp
+
+BeginCmp
+TimeStamp = /5470FC2F;
+Reference = L1;
+ValeurCmp = AUTOTRANS;
+IdModule  = SIL-3;
+EndCmp
+
+BeginCmp
+TimeStamp = /4ECB2EE0;
+Reference = P1;
+ValeurCmp = ISP;
+IdModule  = PIN_ARRAY_3x2_GRUVIN;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A7493C;
+Reference = PZ1;
+ValeurCmp = PIEZO;
+IdModule  = PIN_ARRAY_2X1;
+EndCmp
+
+BeginCmp
+TimeStamp = /51B6AE78;
+Reference = Q1;
+ValeurCmp = BC847C;
+IdModule  = SOT23-BCE;
+EndCmp
+
+BeginCmp
+TimeStamp = /4ECC49EE;
+Reference = R1;
+ValeurCmp = 5K6;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /547100F8;
+Reference = R2;
+ValeurCmp = 200;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743EB;
+Reference = R3;
+ValeurCmp = 1K;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743EE;
+Reference = R4;
+ValeurCmp = 3K9;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A743F1;
+Reference = R5;
+ValeurCmp = 1K5;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /51A7498E;
+Reference = R6;
+ValeurCmp = 1K;
+IdModule  = SM0603;
+EndCmp
+
+EndListe

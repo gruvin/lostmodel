@@ -1,0 +1,11 @@
+EESchema-DOCLIB  Version 2.0  Date: Sun 23 Nov 2014 10:14:20 AM NZDT
+#
+$CMP ATMEGA48P
+D Atmel ATmega48/88 MCU
+$ENDCMP
+#
+$CMP AUTOTRANS
+D Piezo Autotransformer. Approx 150mH with 1:100 ratio
+$ENDCMP
+#
+#End Doc Library
