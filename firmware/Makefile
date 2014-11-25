@@ -21,7 +21,7 @@ OBJECTS = main.o
 all:	main.hex
 
 .cpp.o:
-	$(COMPILE) -c $< -o $@
+	$(COMPILE) -c -c $< -o $@ -Wa,-adhlsm=$*.lst 
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
@@ -45,18 +45,11 @@ clean:
 	rm -f main.hex main.lst main.obj main.cof main.list main.map main.eep.hex main.elf *.o
 
 # file targets:
-main.elf:	$(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS)
 
-main.lst:	main.elf
-	avr-objdump -dS main.elf > main.lst
-
-main.hex:	main.elf main.lst
+main.hex:	main.o
 	rm -f main.hex main.eep.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
-	./checksize main.elf
+	avr-objcopy -j .text -j .data -O ihex main.o main.hex
+	./checksize main.o
 # do the checksize script as our last action to allow successful compilation
 # on Windows with WinAVR where the Unix commands will fail.
 
-disasm:	main.elf
-	avr-objdump -dS main.elf
