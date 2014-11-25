@@ -1,10 +1,13 @@
 #ifndef _MAIN_H
 #define _MAIN_H
 
+#define DEBUG 1
+
 // CW dit length (arbitrary units)
-#define DITLENGTH 8
+#define DITLENGTH 8 // arbitrary while morseStateMachine is just part of the main loop
 
 // TODO: prototype version. Pins changed for production version ...
+//       These are NOT the pins specified in the production electronic schematic
 #define SIG_INP   PIND
 #define SIG_PORT  PORTD
 #define SIG_DDR   DDRD
@@ -29,7 +32,15 @@
 #define LED_ON(a) LED ## a ## _PORT |= (1<<LED ## a ## _BIT)
 #define LED_OFF(a) LED ## a ## _PORT &= ~(1<<LED ## a ## _BIT)
 
-#define MIDPOINT 1400
+#define MIDPOINT 1400 // timing loop should be exactly 10 clock cycles => 1200 loops for 1.5ms. 1400 works in practice. *shrug*
+
+// PWM piezo output volume
+#ifdef DEBUG
+#define PWM_DUTY_CYCLE 3
+#else
+#define PWM_DUTY_CYCLE 27
+#endif
+#define PWM_DUTY_CYCLE_QUIET 2
 
 #define true (-1)
 #define false 0

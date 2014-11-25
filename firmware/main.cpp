@@ -18,7 +18,7 @@
 
 int pulseInWidth()
 {
-  unsigned int width;         // pulse width in while loop iterations
+  unsigned int width;         // pulse width in while loop iterations, which should be exactly 10 clock cycles
   unsigned long numloops;
   
   numloops = 0;
@@ -34,9 +34,6 @@ int pulseInWidth()
   width = 0;
   while (SIG_INP & (1<<SIG_BIT))
     if (width++ > (MIDPOINT * 3)) return -1;
-
-  // DEBUG
-  // if (width > 1400) LED_ON(3); else LED_OFF(3);
 
   return width; 
 }
@@ -267,7 +264,7 @@ int main(void)
 
         // start beep out at lower, quieter frequency and duty cycle
         OCR0A = 255; 
-        OCR0B = 2;
+        OCR0B = PWM_DUTY_CYCLE_QUIET;
 
         runMode = eeprom_read_byte(0x00);
         if (runMode > INACTIVITY) 
@@ -314,6 +311,7 @@ int main(void)
           else
             morseString = (char *)PSTR("R I ");
           morseStart();
+          LED_OFF(3);
           runState = READY;
         }
         break;
@@ -322,11 +320,9 @@ int main(void)
       case READY: {
         if (morseState == STOP)
         {
-          LED_OFF(3);
-
           // Set beeper frqeuency to ~2.8KHz at 15% duty cycle = LOUD!
           OCR0A = 180;
-          OCR0B = 6; // XXX 27
+          OCR0B = PWM_DUTY_CYCLE;
 
           // emit a single, loud "BIP!"
           if (pw < MIDPOINT)
