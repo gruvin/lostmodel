@@ -32,7 +32,12 @@
 #define LED_ON(a) LED ## a ## _PORT |= (1<<LED ## a ## _BIT)
 #define LED_OFF(a) LED ## a ## _PORT &= ~(1<<LED ## a ## _BIT)
 
-#define MIDPOINT 1400 // timing loop should be exactly 10 clock cycles => 1200 loops for 1.5ms. 1400 works in practice. *shrug*
+// input pulse width measurement
+// CLK = 8MHz
+// timing loop is 9 cycles
+// time for one cycle = 1 / (8,000,000 / 9) = 1.125uS
+// 1500uS / 1.125 ~= 1333 
+#define MIDPOINT 1350 // value from actual tests
 
 // PWM piezo output volume
 #ifdef DEBUG
