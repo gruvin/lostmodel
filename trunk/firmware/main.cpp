@@ -18,26 +18,27 @@
 
 int pulseInWidth()
 {
-  unsigned int width = 0;         // pulse width in while loop iterations
-  unsigned int numloops = 0;
-  unsigned int maxloops = 10000;
-
+  unsigned int width;         // pulse width in while loop iterations
+  unsigned long numloops;
+  
+  numloops = 0;
   // wait for any previous pulse to end
   while (SIG_INP & (1<<SIG_BIT))
-    if (numloops++ == maxloops)
-      return -1;
+    if (numloops++ > (MIDPOINT * 2)) return -1;
 
   // wait for pulse to start
   while (!(SIG_INP & (1<<SIG_BIT)))
-    if (numloops++ == maxloops)
-      return -1;
+    if (numloops++ > ((unsigned long)MIDPOINT * 14)) return -1; // MIDPOINT ~= 1500us. Full PPM sweep over 8 channels is 23ms.
 
   // wait for pulse to end
+  width = 0;
   while (SIG_INP & (1<<SIG_BIT))
-    width++;
+    if (width++ > (MIDPOINT * 3)) return -1;
 
-  // convert loop count to ms and return result
-  return (width); 
+  // DEBUG
+  // if (width > 1400) LED_ON(3); else LED_OFF(3);
+
+  return width; 
 }
 
 void beeperOn()
@@ -258,7 +259,7 @@ int main(void)
         LED2_DDR |= (1<<LED2_BIT); LED2_PORT &= ~(1<<LED2_BIT); // output
         LED3_DDR |= (1<<LED3_BIT); LED3_PORT &= ~(1<<LED3_BIT); // output
         PIEZO_DDR |= (1<<PIEZO_BIT); PIEZO_PORT &= ~(1<<PIEZO_BIT); // output (PWM on timer 0)
-        SIG_DDR &= ~(0<<SIG_BIT); SIG_PORT |= (1<<SIG_BIT); // input with pullup
+        SIG_DDR &= ~(1<<SIG_BIT); SIG_PORT |= (1<<SIG_BIT); // input with pullup
 
         // set up PWM output on OC0B pin (timer 0)
         TCCR0A = (0b01<<WGM00); // 8-bit Phase Correct PWM mode, output on OC0B (PD5) ...
@@ -266,7 +267,7 @@ int main(void)
 
         // start beep out at lower, quieter frequency and duty cycle
         OCR0A = 255; 
-        OCR0B = 5;
+        OCR0B = 2;
 
         runMode = eeprom_read_byte(0x00);
         if (runMode > INACTIVITY) 
@@ -301,8 +302,10 @@ int main(void)
 
         if ((pw < 0) && (morseState == STOP))
         {
-          morseString = (char *)PSTR("E     ");
-          morseStart();
+          beeperOn();
+          _delay_ms(100);
+          beeperOff();
+          _delay_ms(900);
         }
         else if (morseState == STOP)
         {
@@ -313,6 +316,7 @@ int main(void)
           morseStart();
           runState = READY;
         }
+        break;
       }
 
       case READY: {
@@ -322,7 +326,7 @@ int main(void)
 
           // Set beeper frqeuency to ~2.8KHz at 15% duty cycle = LOUD!
           OCR0A = 180;
-          OCR0B = 27;
+          OCR0B = 6; // XXX 27
 
           // emit a single, loud "BIP!"
           if (pw < MIDPOINT)
@@ -345,10 +349,10 @@ int main(void)
           {
             if (pw > 0) // if pulse did not time out
             {
-              if (pw > MIDPOINT)    // close approx. mid-servo point (1500ms) using internal 8MHZ clock
+              if (pw > MIDPOINT) // approximately 1500us (mid-servo) using internal 8MHZ MCU clock
               {
                 morseString = (char *)PSTR("LOST "); 
-                morseStart();   // start bleeting loud morse tones
+                morseStart();    // start bleeting loud morse tones
               }
               else
                 morseStop();
@@ -418,8 +422,10 @@ int main(void)
             { 
               if (morseState == STOP)
               {
-                morseString = (char *)PSTR("T ");
-                morseStart();
+                  beeperOn();
+                  _delay_ms(300);
+                  beeperOff();
+                  _delay_ms(700);
               }
             }
             else if (pgmTimer++ > 100)
