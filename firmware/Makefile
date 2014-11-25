@@ -20,17 +20,17 @@ OBJECTS = main.o
 # symbolic targets:
 all:	main.hex
 
-.cpp.o:
-	$(COMPILE) -c -c $< -o $@ -Wa,-adhlsm=$*.lst 
+%.o: %.cpp %.h
+	$(COMPILE) -c $< -o $@
 
-.S.o:
+%.o: %.S
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
 # "-x assembler-with-cpp" should not be necessary since this is the default
 # file type for the .S (with capital S) extension. However, upper case
 # characters are not always preserved on Windows. To ensure WinAVR
 # compatibility define the file type manually.
 
-.c.s:
+%.o:  %.s
 	$(COMPILE) -S $< -o $@
 
 flash:	all
@@ -45,11 +45,18 @@ clean:
 	rm -f main.hex main.lst main.obj main.cof main.list main.map main.eep.hex main.elf *.o
 
 # file targets:
+main.elf:	$(OBJECTS)
+	$(COMPILE) -o main.elf $(OBJECTS)
 
-main.hex:	main.o
+main.lst:	main.elf
+	avr-objdump -dS main.elf > main.lst
+
+main.hex:	main.elf main.lst
 	rm -f main.hex main.eep.hex
-	avr-objcopy -j .text -j .data -O ihex main.o main.hex
-	./checksize main.o
+	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
+	./checksize main.elf
 # do the checksize script as our last action to allow successful compilation
 # on Windows with WinAVR where the Unix commands will fail.
 
+disasm:	main.elf
+	avr-objdump -dS main.elf
