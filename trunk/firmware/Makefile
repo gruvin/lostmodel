@@ -20,7 +20,7 @@ OBJCOPY       = avr-objcopy
 OBJDUMP       = avr-objdump
 AVRDUDE       = avrdude -c avrispmkii -P usb -B2  -p $(MCU_TARGET)
 
-all: $(PRG).elf lst text
+all: $(PRG).elf hex lst 
 
 $(PRG).elf: $(OBJ)
 	$(CPP) $(CPPFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -37,19 +37,13 @@ lst:  $(PRG).lst
 %.lst: %.elf
 	$(OBJDUMP) -h -S $< > $@
 
-# Rules for building the .text rom images
+# Rule for building rom image
 
-text: hex bin
-
-hex:  $(PRG).hex
-bin:  $(PRG).bin
+hex: $(PRG).hex
 
 %.hex: %.elf
 	$(OBJCOPY) -j .text -j .data -O ihex $< $@
 	./checksize $< 
-
-%.bin: %.elf
-	$(OBJCOPY) -j .text -j .data -O binary $< $@
 
 flash:	all
 	$(AVRDUDE) -U flash:w:$(PRG).hex:i

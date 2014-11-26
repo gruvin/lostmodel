@@ -35,7 +35,7 @@
 
 int pulseInWidth()
 {
-  unsigned int width;         // pulse width in while loop iterations, which should be exactly 10 clock cycles
+  unsigned int width;   // pulse width in while loop iterations, which should be exactly 9 clock cycles
   unsigned long numloops;
   
   numloops = 0;
@@ -49,7 +49,7 @@ int pulseInWidth()
 
   // wait for pulse to end
   width = 0;
-  while (SIG_INP & (1<<SIG_BIT))
+  while (SIG_INP & (1<<SIG_BIT)) // 9 clock cycles
     if (width++ > (MIDPOINT * 3)) return -1;
 
   return width; 
@@ -233,9 +233,11 @@ static inline void morseStateMachine()
 }
 
 // call the Morse state machine every millisecond
-ISR(TIMER1_COMPA_vect)
+ISR(TIMER2_COMPA_vect)
 {
-  morseStateMachine();
+  static unsigned char count = 0;
+  if ((count++ % 4) == 3)
+    morseStateMachine();
 }
 
 void morseStart()
@@ -253,6 +255,19 @@ void morseStop()
 void setRunMode(unsigned char newmode)
 {
   eeprom_write_byte(0x00, newmode);
+}
+
+unsigned int sigPulseWidth = 0;
+ISR(TIMER1_CAPT_vect)
+{
+  // an edge detection event has occured on the ICP1(PB0) pin
+  // was it high-to-low or low-to-high?
+  if (SIG_INP & SIG_BIT == 0) // high-to-low
+  {
+    sigPulseWidth = ICR1;
+    ICR1 = 0;
+    TCNT2 = 0;
+  }
 }
 
 int main(void)
@@ -288,12 +303,19 @@ int main(void)
         OCR0A = 255; 
         OCR0B = PWM_DUTY_CYCLE_QUIET;
 
-        // Set up timer1 forthe Morse code sate machine
-        TCCR1A = 0;
-        TCCR1B = (0b01<<WGM12) | (0b010<<CS10); // CTC mode. CLK / 8 (1Mhz counter rate)
-        TCNT1 = 0;
-        OCR1A = 999; // counter TOP
-        TIMSK1 = (1<<OCIE1A); // enable timer1 OC interrupt (every 1ms) 
+        // set up timer 1 for input capture compare on ICP1 pin
+        // TODO: ICP1(PB0) pin not available on my prototype hardware :-( Will wait for PCBs to arrive.
+        // TCCR1A = (0b00<<WGM10); TCCR1B = (0b11<<WGM2B);  // CTC ICR1 mode
+        // TCCR1B |= (0b010<<CS10); // clk/8 for 1MHz counting
+        // TIMSK1 = (1<<ICIE1); // input capture interrupt enabled
+
+        // set up timer 2 for the Morse code sate machine
+        TCCR2A = (0x10<<WGM20); // CTC mode
+        TCCR2B = (0b010<<CS20); // CLK / 8 (1Mhz counter rate)
+        TCNT2 = 0;
+        OCR2A = 249; // counter TOP (250mS, 8-bit timer)
+        TIMSK2 = (1<<OCIE2A); // enable timer 2 OC interrupt (every 1ms) 
+
         sei(); // gloabl interrupt enable
 
         // retrieve stored Run Mode from EEPROM
