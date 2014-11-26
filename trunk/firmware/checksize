@@ -1,13 +1,29 @@
 #!/bin/sh
-# Name: checksize
-# Project: Lost Model Alarm
-# Original Author: Christian Starkjohann
-# Author This Project: Bryan J. Rentoul (aka Gruvin)
+# Filename: checksize
+# Project: Gruvin9X Lost Model Alarm
+# Original Author (this file): Christian Starkjohann
+# Author: Bryan J. Rentoul (aka Gruvin)
 # Creation Date: 2004-12-29
 # Tabsize: 2
 # Copyright: (c) 2005 OBJECTIVE DEVELOPMENT Software GmbH.
 # Copyright: (c) 2014 Gruvin9X Project and Bryan J. Rentoul aka Gruvin
 # Revision: $Id$
+#
+# This file is part of Gruvin9X Lost Model Alarm.
+#
+# Gruvin9X Lost Model Alarm is free software: you can redistribute it 
+# and/or modify it under the terms of the GNU General Public License 
+# as published by the Free Software Foundation, either version 3 of 
+# the License, or(at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program in the file Lincese.txt.  If not, please
+# see <http://www.gnu.org/licenses/>
 
 error=0
 codelimit=8192 
