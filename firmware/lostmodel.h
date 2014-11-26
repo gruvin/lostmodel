@@ -26,7 +26,7 @@
 #ifndef _LOSTMODEL_H
 #define _LOSTMODEL_H
 
-//#define DEBUG 1
+#define DEBUG 1
 
 // CW dit length (arbitrary units)
 #define DITLENGTH 90 // milli-seconds
@@ -67,10 +67,11 @@
 // PWM piezo output volume
 #ifdef DEBUG
 #define PWM_DUTY_CYCLE 3
+#define PWM_DUTY_CYCLE_QUIET 2
 #else
 #define PWM_DUTY_CYCLE 27
+#define PWM_DUTY_CYCLE_QUIET 10
 #endif
-#define PWM_DUTY_CYCLE_QUIET 5
 
 #define true (-1)
 #define false 0
