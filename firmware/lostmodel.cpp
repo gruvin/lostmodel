@@ -1,10 +1,10 @@
-/* Name: main.c
+/* Name: lostmodel.cpp
  * Project: Lost Model Alarm for AVR ATmega88P
  * Author: Bryan Rentoul (aka Gruvin)
  * Creation Date: 2014-11-22
  * Tabsize: 2
  * Copyright: (c) 2014 Gruvin9X Project and Bryan J. Rentoul aka Gruvin
- * License: GNU GPL v2 (see License.txt)
+ * License: GNU GPL v3 (see License.txt)
  * This Revision: $Id$
  */
 
