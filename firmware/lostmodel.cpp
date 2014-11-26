@@ -28,6 +28,7 @@
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <stdlib.h> // abs()
 #include "lostmodel.h"
@@ -69,7 +70,7 @@ void beeperOff()
   TCCR0A &= ~(0b11<<COM0B0);
 }
 
-const char morse[47][7] PROGMEM  = {
+const char morse[47][7] PROGMEM = {
   { 2, 2, 1, 1, 2, 2, 0 },// , ASCII = 44
   { 0 },                  // -
   { 1, 2, 1, 2, 1, 2, 0}, // .
@@ -135,7 +136,7 @@ enum morseState_t {
 
 char *morseString;
 // morse for LM - di'dah'di'dit, dah dah (lost model)
-void morseStateMachine()
+static inline void morseStateMachine() 
 {
   static unsigned int timer;
   static unsigned char bitIndex;
@@ -221,7 +222,6 @@ void morseStateMachine()
       break;
 
     case STOP:
-      beeperOff();
       break; // do nothing
 
     default:
@@ -230,6 +230,12 @@ void morseStateMachine()
 
   } // switch
       
+}
+
+// call the Morse state machine every millisecond
+ISR(TIMER1_COMPA_vect)
+{
+  morseStateMachine();
 }
 
 void morseStart()
@@ -282,6 +288,15 @@ int main(void)
         OCR0A = 255; 
         OCR0B = PWM_DUTY_CYCLE_QUIET;
 
+        // Set up timer1 forthe Morse code sate machine
+        TCCR1A = 0;
+        TCCR1B = (0b01<<WGM12) | (0b010<<CS10); // CTC mode. CLK / 8 (1Mhz counter rate)
+        TCNT1 = 0;
+        OCR1A = 999; // counter TOP
+        TIMSK1 = (1<<OCIE1A); // enable timer1 OC interrupt (every 1ms) 
+        sei(); // gloabl interrupt enable
+
+        // retrieve stored Run Mode from EEPROM
         runMode = eeprom_read_byte(0x00);
         if (runMode > INACTIVITY) 
         {
@@ -289,20 +304,19 @@ int main(void)
           setRunMode(runMode); // store
         }
 
-        // check for programming mode request by input pulse varying widely at least four times
-        // over period of 400ms, starting one second after start-up.
+        // check for programming mode request by input pulse varying widely over
+        // over 10 samples
         // TODO XXX: skip this if BOD or WDT reset occurred
-        _delay_ms(1000);
-        int pw1 = pulseInWidth();
-        _delay_ms(100);
-        int pw2 = pulseInWidth();
-        _delay_ms(100);
-        int pw3 = pulseInWidth();
-        _delay_ms(100);
-        int pw4 = pulseInWidth();
-        _delay_ms(100);
-        int pw5 = pulseInWidth();
-        if ( (abs(pw2 - pw1) > 130) && (abs(pw3 - pw2) > 130) && (abs(pw4 - pw3) > 130) && (abs(pw5 - pw4) > 130) ) 
+        _delay_ms(1000); // allow some time for the receiver to boot up
+        unsigned int pulseDelta = 0;
+        int count;
+        for (count = 0; count < 10; count++)
+        {
+          pulseDelta += abs(pulseDelta - pulseInWidth());
+          _delay_ms(50);
+        }
+        pulseDelta /= count;
+        if (pulseDelta > 500)
           runState = PROGRAM;
         else
           runState = WAIT_READY;
@@ -315,17 +329,15 @@ int main(void)
 
         if ((pw < 0) && (morseState == STOP))
         {
-          beeperOn();
-          _delay_ms(100);
-          beeperOff();
-          _delay_ms(900);
+          morseString = (char *)PSTR("E   ");
+          morseStart();
         }
         else if (morseState == STOP)
         {
           if (runMode == NORMAL)
-            morseString = (char *)PSTR("R N ");
+            morseString = (char *)PSTR("N R ");
           else
-            morseString = (char *)PSTR("R I ");
+            morseString = (char *)PSTR("I R ");
           morseStart();
           LED_OFF(3);
           runState = READY;
@@ -430,14 +442,12 @@ int main(void)
         switch (pgmState)
         {
           case WAIT:
-            if (pw < MIDPOINT) 
+            if (pw < (MIDPOINT * 1.17)) // at least 3/4 stick needed (allowing for first 1ms being included)
             { 
               if (morseState == STOP)
               {
-                  beeperOn();
-                  _delay_ms(300);
-                  beeperOff();
-                  _delay_ms(700);
+                morseString = (char *)PSTR("W  ");
+                morseStart();
               }
             }
             else if (pgmTimer++ > 100)
@@ -449,7 +459,7 @@ int main(void)
             break;
 
           case ENTER:
-            morseString = (char *)PSTR("PGM   ");
+            morseString = (char *)PSTR("P  ");
             morseStart();
             pgmState = ASK_NORMAL;
             break;
@@ -523,8 +533,6 @@ int main(void)
         runState = INIT;
 
     } // main loop switch
-
-    morseStateMachine();
 
     pw = pulseInWidth();
 

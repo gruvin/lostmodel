@@ -26,10 +26,10 @@
 #ifndef _LOSTMODEL_H
 #define _LOSTMODEL_H
 
-#define DEBUG 1
+//#define DEBUG 1
 
 // CW dit length (arbitrary units)
-#define DITLENGTH 8 // arbitrary while morseStateMachine is just part of the main loop
+#define DITLENGTH 90 // milli-seconds
 
 // TODO: prototype version. Pins changed for production version ...
 //       These are NOT the pins specified in the production electronic schematic
@@ -70,7 +70,7 @@
 #else
 #define PWM_DUTY_CYCLE 27
 #endif
-#define PWM_DUTY_CYCLE_QUIET 2
+#define PWM_DUTY_CYCLE_QUIET 5
 
 #define true (-1)
 #define false 0
