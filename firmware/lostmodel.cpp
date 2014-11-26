@@ -14,7 +14,7 @@
 #include <avr/wdt.h>
 #include <util/delay.h>
 #include <stdlib.h> // abs()
-#include "main.h"
+#include "lostmodel.h"
 
 int pulseInWidth()
 {

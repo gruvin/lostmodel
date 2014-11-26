@@ -1,5 +1,5 @@
-#ifndef _MAIN_H
-#define _MAIN_H
+#ifndef _LOSTMODEL_H
+#define _LOSTMODEL_H
 
 #define DEBUG 1
 

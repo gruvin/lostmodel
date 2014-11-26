@@ -1,5 +1,5 @@
-PRG           = main
-OBJ           = main.o
+PRG           = lostmodel
+OBJ           = lostmodel.o
 MCU_TARGET    = atmega88p
 OPTIMIZE      = -Os
 
@@ -13,7 +13,7 @@ CPP           = avr-g++
 
 # Override is only needed by avr-lib build system.
 
-override CPPFLAGS      = -g -Wall $(OPTIMIZE) -I. -mmcu=$(MCU_TARGET) $(DEFS)
+override CPPFLAGS      = -ggdb -Wall $(OPTIMIZE) -I. -mmcu=$(MCU_TARGET) $(DEFS)
 override LDFLAGS       = -I. -Wl,-Map,$(PRG).map
 
 OBJCOPY       = avr-objcopy
@@ -30,8 +30,7 @@ $(PRG).elf: $(OBJ)
 	$(CPP) $(CPPFLAGS) $(LDFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf *.o $(PRG).elf *.eps *.png *.pdf *.bak 
-	rm -rf *.lst *.map *.hex *.bin
+	rm -f *.o *.elf *.eps *.png *.pdf *.bak *.lst *.map *.hex *.bin
 
 lst:  $(PRG).lst
 
@@ -53,7 +52,7 @@ bin:  $(PRG).bin
 	$(OBJCOPY) -j .text -j .data -O binary $< $@
 
 flash:	all
-	$(AVRDUDE) -U flash:w:main.hex:i
+	$(AVRDUDE) -U flash:w:$(PRG).hex:i
 
 fuses:	# internal 8MHz clock, brown-out detection 4.3V, 65ms boot delay, EESAVE enabled
 	$(AVRDUDE) -B8 -u -U lfuse:w:0xe2:m -U hfuse:w:0xd5:m -U efuse:w:0xf9:m
