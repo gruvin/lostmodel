@@ -49,8 +49,11 @@ int pulseInWidth()
 
   // wait for pulse to end
   width = 0;
+  
+  cli(); // XXX remove when hardware with ICR1(PB0) pin becomes available
   while (SIG_INP & (1<<SIG_BIT)) // 9 clock cycles
     if (width++ > (MIDPOINT * 3)) return -1;
+  sei(); // XXX
 
   return width; 
 }
@@ -298,7 +301,7 @@ int main(void)
         TCCR0A = (0b01<<WGM00); // 8-bit Phase Correct PWM mode, output on OC0B (PD5) ...
         TCCR0B = (1<<WGM02) | (0b010<<CS00); // ... clk/8 with TOP(OCR0A)=180 / 2 gives ~2.8KHz
 
-        // start beep out at lower, quieter frequency and duty cycle
+        // start piezo tone out at a lower, quieter frequency and duty cycle
         OCR0A = 255; 
         OCR0B = PWM_DUTY_CYCLE_QUIET;
 
@@ -347,11 +350,13 @@ int main(void)
           }
           pulseDelta /= count;  // calc average pulse width delta
           if (pulseDelta > 500) // 500 seems a reasonable sensitivy, after testing
+          {
             runState = PROGRAM;
-          else
-            runState = WAIT_READY;
-          break;
+            break;
+          }
         }
+        runState = WAIT_READY;
+        break;
       }
 
       case WAIT_READY: 
