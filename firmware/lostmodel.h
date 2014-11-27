@@ -76,10 +76,5 @@
 #define true (-1)
 #define false 0
 
-// Run Modes
-#define NORMAL 0
-#define INACTIVITY 1
-
-
 
 #endif

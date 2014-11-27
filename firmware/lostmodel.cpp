@@ -232,12 +232,25 @@ static inline void morseStateMachine()
       
 }
 
-// call the Morse state machine every millisecond
+// call the Morse state machine every 1 millisecond
 ISR(TIMER2_COMPA_vect)
 {
   static unsigned char count = 0;
-  if ((count++ % 4) == 3)
+  if ((count++ % 4) == 3) // this ISR called every 250ms
     morseStateMachine();
+}
+
+unsigned int sigPulseWidth = 0;
+ISR(TIMER1_CAPT_vect)
+{
+  // an edge detection event has occured on the ICP1(PB0) pin
+  // was it high-to-low or low-to-high?
+  if (!(SIG_INP & SIG_BIT)) // high-to-low
+  {
+    sigPulseWidth = ICR1;
+    ICR1 = 0;
+    TCNT2 = 0;
+  }
 }
 
 void morseStart()
@@ -252,36 +265,22 @@ void morseStop()
   beeperOff();
 }
 
-void setRunMode(unsigned char newmode)
+void storeRunMode(unsigned char newmode)
 {
   eeprom_write_byte(0x00, newmode);
-}
-
-unsigned int sigPulseWidth = 0;
-ISR(TIMER1_CAPT_vect)
-{
-  // an edge detection event has occured on the ICP1(PB0) pin
-  // was it high-to-low or low-to-high?
-  if (SIG_INP & SIG_BIT == 0) // high-to-low
-  {
-    sigPulseWidth = ICR1;
-    ICR1 = 0;
-    TCNT2 = 0;
-  }
 }
 
 int main(void)
 {
   enum { INIT = 0, WAIT_READY, READY, RUNNING, PROGRAM } runState = INIT;
-  int pw = 0; // store last sampled pulse width
+  enum runMode_t { NORMAL = 0, INACTIVITY } runMode = NORMAL;
+  int pw = 0; // store last sampled pulse width // TODO -- will be replaced by sigPulseWidth global var (already present)
 
   /**************************
    ****     MAIN LOOP     ****
    **************************/
   while (1)
   {
-
-    unsigned char runMode = NORMAL;
 
     switch (runState) 
     {
@@ -319,30 +318,40 @@ int main(void)
         sei(); // gloabl interrupt enable
 
         // retrieve stored Run Mode from EEPROM
-        runMode = eeprom_read_byte(0x00);
+        runMode = (enum runMode_t)eeprom_read_byte(0x00);
         if (runMode > INACTIVITY) 
         {
           runMode = NORMAL; // sanitize
-          setRunMode(runMode); // store
+          storeRunMode(runMode); // store
         }
 
         // check for programming mode request by input pulse varying widely over
-        // over 10 samples
-        // TODO XXX: skip this if BOD or WDT reset occurred
-        _delay_ms(1000); // allow some time for the receiver to boot up
-        unsigned int pulseDelta = 0;
-        int count;
-        for (count = 0; count < 10; count++)
+        // over 10 samples. Skipped if a BOD or WDT reset occurred
+        if (MCUSR & WDRF)
         {
-          pulseDelta += abs(pulseDelta - pulseInWidth());
-          _delay_ms(50);
+          MCUSR &= ~(1<<WDRF); // reset the WDRF flag
+          wdt_reset();
+          wdt_enable(WDTO_4S); // just in case
         }
-        pulseDelta /= count;
-        if (pulseDelta > 500)
-          runState = PROGRAM;
+        else if (MCUSR & BORF)
+          MCUSR &= ~(1<<BORF); // reset the BORF flag
         else
-          runState = WAIT_READY;
-        break;
+        {
+          _delay_ms(1000); // allow some time for the receiver to boot up
+          unsigned int pulseDelta = 0;
+          int count;
+          for (count = 0; count < 10; count++)
+          {
+            pulseDelta += abs(pulseDelta - pulseInWidth());
+            _delay_ms(50);
+          }
+          pulseDelta /= count;  // calc average pulse width delta
+          if (pulseDelta > 500) // 500 seems a reasonable sensitivy, after testing
+            runState = PROGRAM;
+          else
+            runState = WAIT_READY;
+          break;
+        }
       }
 
       case WAIT_READY: 
@@ -503,7 +512,7 @@ int main(void)
               {
                 if (pw < MIDPOINT)
                 {
-                  setRunMode(NORMAL);
+                  storeRunMode(NORMAL);
                   pgmState = OK;
                 }
               } else
@@ -528,7 +537,7 @@ int main(void)
               {
                 if (pw < MIDPOINT)
                 {
-                  setRunMode(INACTIVITY);
+                  storeRunMode(INACTIVITY);
                   pgmState = OK;
                 }
               } else
