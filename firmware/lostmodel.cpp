@@ -60,7 +60,7 @@ int pulseInWidth()
 
 void beeperOn()
 {
-  LED_ON(2);
+  LED_ON(3);
 
   // PWM ON
   TCCR0A |= (0b10<<COM0B0);
@@ -68,7 +68,7 @@ void beeperOn()
 
 void beeperOff()
 {
-  LED_OFF(2);
+  LED_OFF(3);
 
   TCCR0A &= ~(0b11<<COM0B0);
 }
@@ -361,7 +361,7 @@ int main(void)
 
       case WAIT_READY: 
       {
-        LED_ON(3);
+        LED_ON(1);
 
         if ((pw < 0) && (morseState == STOP))
         {
@@ -375,7 +375,7 @@ int main(void)
           else
             morseString = (char *)PSTR("I R ");
           morseStart();
-          LED_OFF(3);
+          LED_OFF(1);
           runState = READY;
         }
         break;
@@ -482,6 +482,7 @@ int main(void)
             { 
               if (morseState == STOP)
               {
+                LED_TOGGLE(2);
                 morseString = (char *)PSTR("W  ");
                 morseStart();
               }
@@ -495,6 +496,7 @@ int main(void)
             break;
 
           case ENTER:
+            LED_ON(2);
             morseString = (char *)PSTR("P  ");
             morseStart();
             pgmState = ASK_NORMAL;
