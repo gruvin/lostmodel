@@ -33,10 +33,10 @@
 
 // TODO: prototype version. Pins changed for production version ...
 //       These are NOT the pins specified in the production electronic schematic
-#define SIG_INP   PIND
-#define SIG_PORT  PORTD
-#define SIG_DDR   DDRD
-#define SIG_BIT   3 // D-
+#define SIG_INP   PINB
+#define SIG_PORT  PORTB
+#define SIG_DDR   DDRB
+#define SIG_BIT   0 // D-
 
 #define PIEZO_PORT PORTD
 #define PIEZO_DDR  DDRD
@@ -44,18 +44,19 @@
 
 #define LED1_PORT PORTC
 #define LED1_DDR  DDRC
-#define LED1_BIT  3 // LED05 (not used in prototype)
+#define LED1_BIT  2 // LED03 (not used in prototype)
 
-#define LED2_PORT PORTD
-#define LED2_DDR  DDRD
-#define LED2_BIT  4 // LED02
+#define LED2_PORT PORTC
+#define LED2_DDR  DDRC
+#define LED2_BIT  3 // LED02
 
 #define LED3_PORT PORTC
 #define LED3_DDR  DDRC
-#define LED3_BIT  5 // LED03
+#define LED3_BIT  4 // LED01
 
 #define LED_ON(a) LED ## a ## _PORT |= (1<<LED ## a ## _BIT)
 #define LED_OFF(a) LED ## a ## _PORT &= ~(1<<LED ## a ## _BIT)
+#define LED_TOGGLE(a) LED ## a ## _PORT ^= (1<<LED ## a ## _BIT)
 
 // input pulse width measurement
 // CLK = 8MHz
