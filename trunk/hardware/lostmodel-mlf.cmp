@@ -1,4 +1,4 @@
-Cmp-Mod V01 Created by CvPcb (2013-07-24 BZR 4024)-stable date = Sun 23 Nov 2014 02:10:43 PM NZDT
+Cmp-Mod V01 Created by CvPcb (2013-07-24 BZR 4024)-stable date = Sat 29 Nov 2014 11:20:14 AM NZDT
 
 BeginCmp
 TimeStamp = /4ED087A6;
@@ -50,10 +50,17 @@ IdModule  = SIL-3;
 EndCmp
 
 BeginCmp
+TimeStamp = /5478F3CC;
+Reference = K2;
+ValeurCmp = CONN_3;
+IdModule  = TP-3;
+EndCmp
+
+BeginCmp
 TimeStamp = /5470FC2F;
 Reference = L1;
 ValeurCmp = AUTOTRANS;
-IdModule  = SIL-3;
+IdModule  = TRI-3;
 EndCmp
 
 BeginCmp
