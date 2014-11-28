@@ -1,5 +1,5 @@
 M48
-;DRILL file {Pcbnew (2013-07-24 BZR 4024)-stable} date Tue 25 Nov 2014 11:32:28 AM NZDT
+;DRILL file {Pcbnew (2013-07-24 BZR 4024)-stable} date Sat 29 Nov 2014 11:33:23 AM NZDT
 ;FORMAT={-:-/ absolute / metric / decimal}
 FMAT,2
 METRIC,TZ
@@ -14,9 +14,9 @@ G05
 M71
 T1
 X60.69Y-60.34
-X60.79Y-52.64
 X61.49Y-63.57
 X61.49Y-66.11
+X61.8Y-52.1
 X64.59Y-59.64
 X64.89Y-64.64
 X67.79Y-59.84
