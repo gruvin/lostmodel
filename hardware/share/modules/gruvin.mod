@@ -1,4 +1,4 @@
-PCBNEW-LibModule-V1  Sun 23 Nov 2014 09:52:24 PM NZDT
+PCBNEW-LibModule-V1  Sat 29 Nov 2014 11:22:51 AM NZDT
 # encoding utf-8
 Units mm
 $INDEX
@@ -81,6 +81,7 @@ SW_SPDT_SLIDE_90
 SW_SPDT_horiz
 TO-89
 TP
+TP-3
 TP_SML
 TQFP64_08
 TRI-3
@@ -6487,6 +6488,38 @@ Ne 1 "/J2"
 Po 0 0
 $EndPAD
 $EndMODULE TP
+$MODULE TP-3
+Po 0 0 0 15 5478F5B8 00000000 ~~
+Li TP-3
+Cd Connecteur 3 pins
+Kw CONN DEV
+Sc 0
+AR /5478F3CC
+Op 0 0 0
+T0 -0.2 -1.1 0.6 0.6 0 0.1 N V 21 N "K2"
+T1 -0.1 -1.1 0.6 0.6 0 0.1 N I 21 N "TP-3"
+$PAD
+Sh "1" R 0.8 0.8 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 1 "GND"
+Po -1.3 0
+$EndPAD
+$PAD
+Sh "2" C 0.8 0.8 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 2 "N-0000022"
+Po 0 0
+$EndPAD
+$PAD
+Sh "3" C 0.8 0.8 0 0 0
+Dr 0 0 0
+At SMD N 00888000
+Ne 3 "N-0000023"
+Po 1.3 0
+$EndPAD
+$EndMODULE TP-3
 $MODULE TP_SML
 Po 0 0 0 15 4FB596DF 00000000 ~~
 Li TP_SML
