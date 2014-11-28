@@ -33,31 +33,6 @@
 #include <stdlib.h> // abs()
 #include "lostmodel.h"
 
-int pulseInWidth()
-{
-  unsigned int width;   // pulse width in while loop iterations, which should be exactly 9 clock cycles
-  unsigned long numloops;
-  
-  numloops = 0;
-  // wait for any previous pulse to end
-  while (SIG_INP & (1<<SIG_BIT))
-    if (numloops++ > (MIDPOINT * 2)) return -1;
-
-  // wait for pulse to start
-  while (!(SIG_INP & (1<<SIG_BIT)))
-    if (numloops++ > ((unsigned long)MIDPOINT * 14)) return -1; // MIDPOINT ~= 1500us. Full PPM sweep over 8 channels is 23ms.
-
-  // wait for pulse to end
-  width = 0;
-  
-  cli(); // XXX remove when hardware with ICR1(PB0) pin becomes available
-  while (SIG_INP & (1<<SIG_BIT)) // 9 clock cycles
-    if (width++ > (MIDPOINT * 3)) return -1;
-  sei(); // XXX
-
-  return width; 
-}
-
 void beeperOn()
 {
   LED_ON(3);
@@ -235,25 +210,54 @@ static inline void morseStateMachine()
       
 }
 
-// call the Morse state machine every 1 millisecond
+
+#define PULSE_INVALID (-1)
+volatile int sigPulseWidth;
+volatile unsigned int pulseTimeoutCounter = 0;
+// this ISR called every 250uS
 ISR(TIMER2_COMPA_vect)
 {
+  if (pulseTimeoutCounter++ > PULSE_TIMEOUT)
+  {
+    sigPulseWidth = PULSE_INVALID;  // signal no pulse detected
+    pulseTimeoutCounter--; // prevent counter incrementing further
+    LED_OFF(2);
+  }
+
   static unsigned char count = 0;
-  if ((count++ % 4) == 3) // this ISR called every 250ms
+  if ((count++ % 4) == 3)  // call the Morse state machine every 1 millisecond 
     morseStateMachine();
 }
 
-unsigned int sigPulseWidth = 0;
 ISR(TIMER1_CAPT_vect)
 {
   // an edge detection event has occured on the ICP1(PB0) pin
-  // was it high-to-low or low-to-high?
-  if (!(SIG_INP & SIG_BIT)) // high-to-low
+  unsigned int icr;
+
+  icr = ICR1; // capture counter value as at this edge trigger
+
+  static int c = 0;
+  if (TCCR1B & (1<<ICES1)) // trigger was high going edge
   {
-    sigPulseWidth = ICR1;
-    ICR1 = 0;
-    TCNT2 = 0;
+    TCNT1 = 0;             // reset counter
+    TCCR1B &= ~(1<<ICES1); // set next trigger to low going edge
   }
+  else // trigger was low going edge
+  {
+    if ((c++ % 33) == 0) LED_TOGGLE(2); // DEBUG
+    if ((icr > 800) && (icr < 2200)) 
+    {
+      pulseTimeoutCounter = 0;
+      sigPulseWidth = icr;
+    }
+    else
+    {
+      sigPulseWidth = PULSE_INVALID; // invalid pulse width
+      LED_OFF(2);
+    }
+    TCCR1B |= (1<<ICES1); // set next trigger to high going edge
+  }
+
 }
 
 void morseStart()
@@ -277,7 +281,6 @@ int main(void)
 {
   enum { INIT = 0, WAIT_READY, READY, RUNNING, PROGRAM } runState = INIT;
   enum runMode_t { NORMAL = 0, INACTIVITY } runMode = NORMAL;
-  int pw = 0; // store last sampled pulse width // TODO -- will be replaced by sigPulseWidth global var (already present)
 
   /**************************
    ****     MAIN LOOP     ****
@@ -289,13 +292,16 @@ int main(void)
     {
       case INIT: 
       {
+        cli();
+        wdt_reset();
+
         wdt_enable(WDTO_4S);  // 4 second watchdog timer. (Brown Out Detector fuses are set for 2.7V)
 
-        LED1_DDR |= (1<<LED1_BIT); LED1_PORT &= ~(1<<LED1_BIT); // output
-        LED2_DDR |= (1<<LED2_BIT); LED2_PORT &= ~(1<<LED2_BIT); // output
-        LED3_DDR |= (1<<LED3_BIT); LED3_PORT &= ~(1<<LED3_BIT); // output
+        LED1_DDR |= (1<<LED1_BIT); LED1_PORT &= ~(1<<LED1_BIT);     // output
+        LED2_DDR |= (1<<LED2_BIT); LED2_PORT &= ~(1<<LED2_BIT);     // output
+        LED3_DDR |= (1<<LED3_BIT); LED3_PORT &= ~(1<<LED3_BIT);     // output
         PIEZO_DDR |= (1<<PIEZO_BIT); PIEZO_PORT &= ~(1<<PIEZO_BIT); // output (PWM on timer 0)
-        SIG_DDR &= ~(1<<SIG_BIT); SIG_PORT |= (1<<SIG_BIT); // input with pullup
+        SIG_DDR &= ~(1<<SIG_BIT); SIG_PORT |= (1<<SIG_BIT);         // input with pullup (ICR1)
 
         // set up PWM output on OC0B pin (timer 0)
         TCCR0A = (0b01<<WGM00); // 8-bit Phase Correct PWM mode, output on OC0B (PD5) ...
@@ -306,18 +312,21 @@ int main(void)
         OCR0B = PWM_DUTY_CYCLE_QUIET;
 
         // set up timer 1 for input capture compare on ICP1 pin
-        // TODO: ICP1(PB0) pin not available on my prototype hardware :-( Will wait for PCBs to arrive.
-        // TCCR1A = (0b00<<WGM10); TCCR1B = (0b11<<WGM2B);  // CTC ICR1 mode
-        // TCCR1B |= (0b010<<CS10); // clk/8 for 1MHz counting
-        // TIMSK1 = (1<<ICIE1); // input capture interrupt enabled
+        TCCR1A = (0b00<<WGM10);
+        TCCR1B = (0b010<<CS10); // clk/8 for 1MHz counting
+        TCCR1B |= (1<<ICES1);   // look for rising edge first
+        TCNT1 = 0;
+        sigPulseWidth = PULSE_INVALID; 
+        TIMSK1 = (1<<ICIE1);    // input capture interrupt enabled
 
         // set up timer 2 for the Morse code sate machine
         TCCR2A = (0x10<<WGM20); // CTC mode
         TCCR2B = (0b010<<CS20); // CLK / 8 (1Mhz counter rate)
         TCNT2 = 0;
-        OCR2A = 249; // counter TOP (250mS, 8-bit timer)
-        TIMSK2 = (1<<OCIE2A); // enable timer 2 OC interrupt (every 1ms) 
+        OCR2A = 249;            // counter TOP (250uS, 8-bit timer)
+        TIMSK2 = (1<<OCIE2A);   // enable timer 2 OC interrupt (every 1ms) 
 
+        
         sei(); // gloabl interrupt enable
 
         // retrieve stored Run Mode from EEPROM
@@ -330,6 +339,7 @@ int main(void)
 
         // check for programming mode request by input pulse varying widely over
         // over 10 samples. Skipped if a BOD or WDT reset occurred
+        /*
         if (MCUSR & WDRF)
         {
           MCUSR &= ~(1<<WDRF); // reset the WDRF flag
@@ -337,19 +347,26 @@ int main(void)
           wdt_enable(WDTO_4S); // just in case
         }
         else if (MCUSR & BORF)
-          MCUSR &= ~(1<<BORF); // reset the BORF flag
+          MCUSR &= ~(1<<BORF);         // reset the BORF flag
         else
+          */
         {
-          _delay_ms(1000); // allow some time for the receiver to boot up
-          unsigned int pulseDelta = 0;
+          _delay_ms(1000);             // allow one second for the receiver to boot up
+          unsigned int pulseSum = 0;
+          unsigned int lastPW = 0;
           int count;
           for (count = 0; count < 10; count++)
           {
-            pulseDelta += abs(pulseDelta - pulseInWidth());
+            int thisPulse = sigPulseWidth;
+            if (lastPW == 0) lastPW = thisPulse;
+            if (thisPulse > 0)
+            {
+              pulseSum += abs(thisPulse - lastPW);
+              lastPW = thisPulse;
+            }
             _delay_ms(50);
           }
-          pulseDelta /= count;  // calc average pulse width delta
-          if (pulseDelta > 500) // 500 seems a reasonable sensitivy, after testing
+          if ((pulseSum / count) > 200) // enter programming mode if average pulse delta large enough 
           {
             runState = PROGRAM;
             break;
@@ -363,7 +380,7 @@ int main(void)
       {
         LED_ON(1);
 
-        if ((pw < 0) && (morseState == STOP))
+        if ((sigPulseWidth < 0) && (morseState == STOP))
         {
           morseString = (char *)PSTR("E   ");
           morseStart();
@@ -389,7 +406,7 @@ int main(void)
           OCR0B = PWM_DUTY_CYCLE;
 
           // emit a single, loud "BIP!"
-          if (pw < MIDPOINT)
+          if (sigPulseWidth < MIDPOINT)
           {
             beeperOn();
             _delay_ms(100);
@@ -407,42 +424,53 @@ int main(void)
         {
           case /* runMode is */NORMAL:
           {
-            if (pw > 0) // if pulse did not time out
+            if (sigPulseWidth > 0) // if pulse did not time out
             {
-              if (pw > MIDPOINT) // approximately 1500us (mid-servo) using internal 8MHZ MCU clock
+              if (sigPulseWidth > MIDPOINT)
               {
                 morseString = (char *)PSTR("LOST "); 
                 morseStart();    // start bleeting loud morse tones
               }
               else
                 morseStop();
-            } else
+            } 
+            else
+            {
               morseStop();
+              runState = WAIT_READY; // we lost the pulse signal TODO: should optionally alarm instead?
+            }
           
             break;
           }
 
           case /* runMode is */INACTIVITY:
           {
-            static int last_pw = 0;
-            static int last_pwAverage = 0;
-            static int pwAverage;
+            static int last_sigPulseWidth = 0;
+            static int last_sigPulseWidthAverage = 0;
+            static int sigPulseWidthAverage;
             static unsigned int inactiveTimer = 0;
             
-            if (pw > 0) // if pulse did not time out
+            if (sigPulseWidth > 0) // if pulse did not time out
             {
-              if (last_pw == 0) last_pw = pw;
-              pwAverage = ((last_pw * 7) + pw) / 8; // some noise filtering
-              last_pw = pw;
+              int thisPulse = sigPulseWidth;
+              if (last_sigPulseWidth == 0) last_sigPulseWidth = thisPulse;
+              sigPulseWidthAverage = ((last_sigPulseWidth * 7) + thisPulse) / 8; // some noise filtering
+              last_sigPulseWidth = thisPulse;
 
-              if (last_pwAverage == 0) last_pwAverage = pwAverage;
-              if ( (pwAverage > (last_pwAverage-10)) && (pwAverage < (last_pwAverage+10/*TODO sensitivity*/)) )
+              if (last_sigPulseWidthAverage == 0)
+                last_sigPulseWidthAverage = sigPulseWidthAverage;
+
+              if ( (sigPulseWidthAverage > (last_sigPulseWidthAverage-20)) 
+                  && (sigPulseWidthAverage < (last_sigPulseWidthAverage+20/*TODO sensitivity*/)) )
               {
-                if (inactiveTimer++ > 10000/*TODO -- how long to wait for inactivity before alarming*/)
+                if (inactiveTimer++ > 600/*TODO -- how long to wait for inactivity before alarming*/)
                 {
                   inactiveTimer--; // don't let it keep climbing
-                  morseString = (char *)PSTR("LOST "); 
-                  morseStart();   // start bleeting loud morse tones
+                  if (morseState == STOP)
+                  {
+                    morseString = (char *)PSTR("LOST "); 
+                    morseStart();   // start bleeting loud morse tones
+                  }
                 }
               }
               else
@@ -450,10 +478,14 @@ int main(void)
                 inactiveTimer = 0;
                 morseStop();
               }
-              last_pwAverage = pwAverage;
+              last_sigPulseWidthAverage = sigPulseWidthAverage;
 
-            } else // pulse timed out
+            }
+            else
+            {
               morseStop();
+              runState = WAIT_READY; // we lost the pulse signal TODO: should optionally alarm instead?
+            }
 
           }
         }
@@ -475,10 +507,11 @@ int main(void)
         } pgmState = WAIT;
         static int pgmTimer = 0;
 
+
         switch (pgmState)
         {
           case WAIT:
-            if (pw < (MIDPOINT * 1.17)) // at least 3/4 stick needed (allowing for first 1ms being included)
+            if (sigPulseWidth < (MIDPOINT * 1.17)) // at least 3/4 stick needed (allowing for first 1ms being included)
             { 
               if (morseState == STOP)
               {
@@ -496,7 +529,7 @@ int main(void)
             break;
 
           case ENTER:
-            LED_ON(2);
+            LED_ON(1);
             morseString = (char *)PSTR("P  ");
             morseStart();
             pgmState = ASK_NORMAL;
@@ -517,7 +550,7 @@ int main(void)
             {
               if (pgmTimer++ < 200) // did they say yes?
               {
-                if (pw < MIDPOINT)
+                if (sigPulseWidth < MIDPOINT)
                 {
                   storeRunMode(NORMAL);
                   pgmState = OK;
@@ -542,7 +575,7 @@ int main(void)
             {
               if (pgmTimer++ < 200) // did they say yes?
               {
-                if (pw < MIDPOINT)
+                if (sigPulseWidth < MIDPOINT)
                 {
                   storeRunMode(INACTIVITY);
                   pgmState = OK;
@@ -572,7 +605,7 @@ int main(void)
 
     } // main loop switch
 
-    pw = pulseInWidth();
+    _delay_ms(10); // XXX TODO: fudge to slow asynch counters for PROGRAM and INACTIVITY modes down
 
     wdt_reset();
   } // MAIN LOOP

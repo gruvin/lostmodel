@@ -59,11 +59,9 @@
 #define LED_TOGGLE(a) LED ## a ## _PORT ^= (1<<LED ## a ## _BIT)
 
 // input pulse width measurement
-// CLK = 8MHz
-// timing loop is 9 cycles
-// time for one cycle = 1 / (8,000,000 / 9) = 1.125uS
-// 1500uS / 1.125 ~= 1333 
-#define MIDPOINT 1350 // value from actual tests
+// Timer 1 counter clock = 1MHz
+#define MIDPOINT 1500 // uS
+#define PULSE_TIMEOUT (23000 / 250) // 23mS, in 250uS increments
 
 // PWM piezo output volume
 #ifdef DEBUG
