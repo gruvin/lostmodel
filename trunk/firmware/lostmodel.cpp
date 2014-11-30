@@ -48,54 +48,54 @@ void beeperOff()
   TCCR0A &= ~(0b11<<COM0B0);
 }
 
-const char morse[47][7] PROGMEM = {
-  { 2, 2, 1, 1, 2, 2, 0 },// , ASCII = 44
-  { 0 },                  // -
-  { 1, 2, 1, 2, 1, 2, 0}, // .
-  { 2, 1, 1, 2, 1, 0 },   // /
-  { 2, 2, 2, 2, 2, 0 },   // 0
-  { 1, 2, 2, 2, 2, 0 },   // 1
-  { 1, 1, 2, 2, 2, 0 },   // 2
-  { 1, 1, 1, 2, 2, 0 },   // 3
-  { 1, 1, 1, 1, 2, 0 },   // 4
-  { 1, 1, 1, 1, 1, 0 },   // 5
-  { 2, 1, 1, 1, 1, 0 },   // 6
-  { 2, 2, 1, 1, 1, 0 },   // 7
-  { 2, 2, 2, 1, 1, 0 },   // 8
-  { 2, 2, 2, 2, 1, 0 },   // 9
-  { 0 },                  // :
-  { 0 },                  // ;
-  { 0 },                  // <
-  { 2, 1, 1, 1, 2, 0 },   // =
-  { 0 },                  // >
-  { 1, 1, 2, 2, 1, 1, 0 },// ?
-  { 0 },                  // @
-  { 1, 2, 0 },            // A
-  { 2, 1, 1, 1, 0 },      // B
-  { 2, 1, 2, 1, 0 },      // C
-  { 2, 1, 1, 0 },         // D
-  { 1, 0 },               // E
-  { 1, 1, 2, 1, 0 },      // F
-  { 2, 2, 1, 0 },         // G
-  { 1, 1, 1, 1, 0 },      // H
-  { 1, 1, 0 },            // I
-  { 1, 2, 2, 2, 0 },      // J
-  { 2, 1, 2, 0 },         // K
-  { 1, 2, 1, 1, 0 },      // L
-  { 2, 2, 0 },            // M
-  { 2, 1, 0 },            // N
-  { 2, 2, 2, 0 },         // O
-  { 1, 2, 2, 1, 0 },      // P
-  { 2, 2, 1, 2, 0 },      // Q
-  { 1, 2, 1, 0 },         // R
-  { 1, 1, 1, 0 },         // S
-  { 2, 0 },               // T
-  { 1, 1, 2, 0 },         // U
-  { 1, 1, 1, 2, 0 },      // V
-  { 1, 2, 2, 0 },         // W
-  { 2, 1, 1, 2, 0 },      // X
-  { 2, 1, 2, 2, 0 },      // Y
-  { 2, 2, 1, 1, 0 }       // Z
+const unsigned char morseTable[47] PROGMEM = {
+  0b11110011, // , ASCII 44(dec)
+  0,
+  0b11010101, // .
+  0b10110010, // /
+  0b10111111, // 0
+  0b10101111, // 1
+  0b10100111, // 2
+  0b10100011, // 3
+  0b10100001, // 4
+  0b10100000, // 5
+  0b10110000, // 6
+  0b10111000, // 7
+  0b10111100, // 8
+  0b10111110, // 9
+  0,          // :
+  0,          // ;
+  0,          // <
+  0b10110001, // =
+  0,          // >
+  0b11001100, // ?
+  0,          // @
+  0b01001000, // A
+  0b10010000, // B
+  0b10010100, // C
+  0b01110000, // D
+  0b00100000, // E
+  0b10000100, // F
+  0b01111000, // G
+  0b10000000, // H
+  0b01000000, // I
+  0b10001110, // J
+  0b01110100, // K
+  0b10001000, // L
+  0b01011000, // M
+  0b01010000, // N
+  0b01111100, // O
+  0b10001100, // P
+  0b10011010, // Q
+  0b01101000, // R
+  0b01100000, // S
+  0b00110000, // T
+  0b01100100, // U
+  0b10000010, // V
+  0b01101100, // W
+  0b10010010, // X
+  0b10010110, // Y
+  0b10011000  // Z
 }; // morse table
 
 
@@ -117,7 +117,8 @@ char *morseString;
 static inline void morseStateMachine() 
 {
   static unsigned int timer;
-  static unsigned char bitIndex;
+  static unsigned char bitCount;
+  static unsigned char letterBits;
   static unsigned char charIndex;
   static char thisChar;
 
@@ -165,12 +166,14 @@ static inline void morseStateMachine()
 
       timer = 0;
 
-      morseState = (morseState_t)pgm_read_byte(&morse[thisChar-44][bitIndex++]);
+      if (letterBits & 0b10000000)
+        morseState = DAH;
+      else
+        morseState = DIT;
 
-      if ((morseState == END) || (bitIndex > sizeof(morse[1]))) {
+      letterBits <<= 1; // shift bits left 1 position
+      if (bitCount-- == 0)
         morseState = LETTERGAP;
-        bitIndex = 0;
-      };
 
       break;
 
@@ -183,18 +186,25 @@ static inline void morseStateMachine()
         timer = 0;
         morseState = SPACE;
       }
-      else if ((thisChar == '\0') || (thisChar < ',') || (thisChar > 'Z'))
+      else if ( (thisChar == '\0') || (thisChar < ',') || (thisChar > 'Z') ) // end of string or invalid character?  
         morseState = STOP;
       else
-        morseState = NEXTBIT;
+      {
+        letterBits = pgm_read_byte(&morseTable[thisChar-44]);
+        bitCount = (letterBits >> 5);
+        if (bitCount < 6)
+          letterBits <<= 3;
+        else
+          letterBits <<= 2;
 
+        morseState = NEXTBIT;
+      }
       break;
 
 
     case START:
       beeperOff();
       timer = 0;
-      bitIndex = 0;
       charIndex = 0;
       morseState = NEXTCHAR;
       break;
@@ -388,9 +398,9 @@ int main(void)
         else if (morseState == STOP)
         {
           if (runMode == NORMAL)
-            morseString = (char *)PSTR("N R ");
+            morseString = (char *)PSTR("R N ");
           else
-            morseString = (char *)PSTR("I R ");
+            morseString = (char *)PSTR("R I ");
           morseStart();
           LED_OFF(1);
           runState = READY;
