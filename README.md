@@ -20,4 +20,7 @@ Programming and status tones are emitted (at lower, close range tolerable levels
 
 The alarm can work in either Normal or Inactivity mode. In Inactivity mode, the alarm will sound if there has been no activity (for a minute or two) on the RC channel the module is connected to. Useful for cases where a dedicate RC channel is not available. Just connect to aileron or elevator channel.
 
-Photos and demo video to come, maybe some day.
+## KiCAD v4 PCB Render
+<img src="img/kicad_render.png" width="320">
+
+Autotransformer and off-board quartz piezo not shown.
