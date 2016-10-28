@@ -224,6 +224,7 @@ static inline void morseStateMachine()
 #define PULSE_INVALID (-1)
 volatile int sigPulseWidth;
 volatile unsigned int pulseTimeoutCounter = 0;
+volatile bool runningIndicatorEnabled = false;
 // this ISR called every 250uS
 ISR(TIMER2_COMPA_vect)
 {
@@ -231,12 +232,27 @@ ISR(TIMER2_COMPA_vect)
   {
     sigPulseWidth = PULSE_INVALID;  // signal no pulse detected
     pulseTimeoutCounter--; // prevent counter incrementing further
-    LED_OFF(2);
   }
 
   static unsigned char count = 0;
   if ((count++ % 4) == 3)  // call the Morse state machine every 1 millisecond 
     morseStateMachine();
+
+  // blink middle (blue) LED briefly, each three seconds to indicate RUNNING state (if so)
+  static unsigned int runningIndicatorCount = 0;
+  if (runningIndicatorEnabled)
+  {
+    if (runningIndicatorCount == 0) LED_ON(2);
+    else if (runningIndicatorCount == (4 * 120)) LED_OFF(2);  // LED on for 120ms
+
+    if (runningIndicatorCount == (4 * 3000 - 1)) // reset counter at 3 seconds
+      runningIndicatorCount = 0;
+    else
+      runningIndicatorCount++;
+  }
+  else 
+    LED_OFF(2);
+
 }
 
 ISR(TIMER1_CAPT_vect)
@@ -246,7 +262,6 @@ ISR(TIMER1_CAPT_vect)
 
   icr = ICR1; // capture counter value as at this edge trigger
 
-  static int c = 0;
   if (TCCR1B & (1<<ICES1)) // trigger was high going edge
   {
     TCNT1 = 0;             // reset counter
@@ -254,7 +269,6 @@ ISR(TIMER1_CAPT_vect)
   }
   else // trigger was low going edge
   {
-    if ((c++ % 33) == 0) LED_TOGGLE(2); // DEBUG
     if ((icr > 800) && (icr < 2200)) 
     {
       pulseTimeoutCounter = 0;
@@ -263,7 +277,6 @@ ISR(TIMER1_CAPT_vect)
     else
     {
       sigPulseWidth = PULSE_INVALID; // invalid pulse width
-      LED_OFF(2);
     }
     TCCR1B |= (1<<ICES1); // set next trigger to high going edge
   }
@@ -293,11 +306,12 @@ int main(void)
   enum runMode_t { NORMAL = 0, INACTIVITY } runMode = NORMAL;
 
   /**************************
-   ****     MAIN LOOP     ****
+   ****  STATE MACHINE   ****
    **************************/
   while (1)
   {
 
+    runningIndicatorEnabled = (runState == RUNNING) ? true : false;
     switch (runState) 
     {
       case INIT: 
@@ -321,10 +335,10 @@ int main(void)
         OCR0A = 255; 
         OCR0B = PWM_DUTY_CYCLE_QUIET;
 
-        // set up timer 1 for input capture compare on ICP1 pin
+        // set up timer 1 for input capture compare on ICP1 pin (PB0, IC pin 12)
         TCCR1A = (0b00<<WGM10);
         TCCR1B = (0b010<<CS10); // clk/8 for 1MHz counting
-        TCCR1B |= (1<<ICES1);   // look for rising edge first
+        TCCR1B |= (1<<ICES1);   // trugger on rising edge (initially)
         TCNT1 = 0;
         sigPulseWidth = PULSE_INVALID; 
         TIMSK1 = (1<<ICIE1);    // input capture interrupt enabled
@@ -335,52 +349,36 @@ int main(void)
         TCNT2 = 0;
         OCR2A = 249;            // counter TOP (250uS, 8-bit timer)
         TIMSK2 = (1<<OCIE2A);   // enable timer 2 OC interrupt (every 1ms) 
-
         
         sei(); // gloabl interrupt enable
 
         // retrieve stored Run Mode from EEPROM
         runMode = (enum runMode_t)eeprom_read_byte(0x00);
-        if (runMode > INACTIVITY) 
+        if (runMode > INACTIVITY) // sanitize
         {
-          runMode = NORMAL; // sanitize
-          storeRunMode(runMode); // store
+          runMode = NORMAL;
+          storeRunMode(runMode);
         }
 
-        // check for programming mode request by input pulse varying widely over
-        // over 10 samples. Skipped if a BOD or WDT reset occurred
-        /*
-        if (MCUSR & WDRF)
+        _delay_ms(1000);             // allow one second for the receiver to boot up
+        unsigned int pulseSum = 0;
+        unsigned int lastPW = 0;
+        int count;
+        for (count = 0; count < 10; count++)
         {
-          MCUSR &= ~(1<<WDRF); // reset the WDRF flag
-          wdt_reset();
-          wdt_enable(WDTO_4S); // just in case
+          int thisPulse = sigPulseWidth;
+          if (lastPW == 0) lastPW = thisPulse;
+          if (thisPulse > 0)
+          {
+            pulseSum += abs(thisPulse - lastPW);
+            lastPW = thisPulse;
+          }
+          _delay_ms(50);
         }
-        else if (MCUSR & BORF)
-          MCUSR &= ~(1<<BORF);         // reset the BORF flag
-        else
-          */
+        if ((pulseSum / count) > 200) // enter programming mode if average pulse delta large enough 
         {
-          _delay_ms(1000);             // allow one second for the receiver to boot up
-          unsigned int pulseSum = 0;
-          unsigned int lastPW = 0;
-          int count;
-          for (count = 0; count < 10; count++)
-          {
-            int thisPulse = sigPulseWidth;
-            if (lastPW == 0) lastPW = thisPulse;
-            if (thisPulse > 0)
-            {
-              pulseSum += abs(thisPulse - lastPW);
-              lastPW = thisPulse;
-            }
-            _delay_ms(50);
-          }
-          if ((pulseSum / count) > 200) // enter programming mode if average pulse delta large enough 
-          {
-            runState = PROGRAM;
-            break;
-          }
+          runState = PROGRAM;
+          break;
         }
         runState = WAIT_READY;
         break;
@@ -397,18 +395,19 @@ int main(void)
         }
         else if (morseState == STOP)
         {
+          LED_OFF(1);
           if (runMode == NORMAL)
             morseString = (char *)PSTR("R N ");
           else
             morseString = (char *)PSTR("R I ");
           morseStart();
-          LED_OFF(1);
           runState = READY;
         }
         break;
       }
 
-      case READY: {
+      case READY:
+      {
         if (morseState == STOP)
         {
           // Set beeper frqeuency to ~2.8KHz at 15% duty cycle = LOUD!
@@ -432,9 +431,9 @@ int main(void)
       {
         switch (runMode)
         {
-          case /* runMode is */NORMAL:
+          case NORMAL: /* manually switched at transmitter */
           {
-            if (sigPulseWidth > 0) // if pulse did not time out
+            if (sigPulseWidth > 0)
             {
               if (sigPulseWidth > MIDPOINT)
               {
@@ -453,14 +452,14 @@ int main(void)
             break;
           }
 
-          case /* runMode is */INACTIVITY:
+          case INACTIVITY: /* enteres lost mode if no acitivity seen for a while */
           {
             static int last_sigPulseWidth = 0;
             static int last_sigPulseWidthAverage = 0;
             static int sigPulseWidthAverage;
             static unsigned int inactiveTimer = 0;
             
-            if (sigPulseWidth > 0) // if pulse did not time out
+            if (sigPulseWidth > 0) // if pulse has not timed out
             {
               int thisPulse = sigPulseWidth;
               if (last_sigPulseWidth == 0) last_sigPulseWidth = thisPulse;
@@ -475,7 +474,7 @@ int main(void)
               {
                 if (inactiveTimer++ > 600/*TODO -- how long to wait for inactivity before alarming*/)
                 {
-                  inactiveTimer--; // don't let it keep climbing
+                  inactiveTimer--; // don't let this keep climbing
                   if (morseState == STOP)
                   {
                     morseString = (char *)PSTR("LOST "); 
@@ -494,7 +493,7 @@ int main(void)
             else
             {
               morseStop();
-              runState = WAIT_READY; // we lost the pulse signal TODO: should optionally alarm instead?
+              runState = WAIT_READY; // we lost the signal entirely. Go quiet.
             }
 
           }
@@ -613,9 +612,9 @@ int main(void)
       default:
         runState = INIT;
 
-    } // main loop switch
+    } // FSM switch
 
-    _delay_ms(10); // XXX TODO: fudge to slow asynch counters for PROGRAM and INACTIVITY modes down
+    _delay_ms(10); // XXX TODO: fix this ugly hack,  here just to slow down asynch counters for PROGRAM and INACTIVITY modes
 
     wdt_reset();
   } // MAIN LOOP

@@ -40,11 +40,11 @@
 
 #define PIEZO_PORT PORTD
 #define PIEZO_DDR  DDRD
-#define PIEZO_BIT  5 // LED01
+#define PIEZO_BIT  5 // PIEZO
 
 #define LED1_PORT PORTC
 #define LED1_DDR  DDRC
-#define LED1_BIT  2 // LED03 (not used in prototype)
+#define LED1_BIT  2 // LED03
 
 #define LED2_PORT PORTC
 #define LED2_DDR  DDRC
