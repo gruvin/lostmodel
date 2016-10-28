@@ -1,24 +1,24 @@
 # Open Source RC Lost Model Alarm 
 * Two modes -- Normal (manual switch) or Inactivity
-* Modes programmable from TX. 
+* Modes programmable from TX 
 * Resonated PIEZO
-* Loud!
+* LOUD!
 
-Quick notes ...
+Hardware design created in free, open source KiCAD EDA suite.
 
-The hardware design created using free, open source KiCAD EDA suite.
+Employs ATmega88PA (5x5mm MLF) to intelligently drive a quartz piezo via autotransformer at 2.8KHz resonant frequency. This gives air and ear peircingly, LOUD output. Piezo and transformer taken from cheap personal alarm.
 
-The electronics employs an ATmega88PA (5x5mm chip) to intelligently drive a piezo with autotransformer, at 2.8KHz resonant frequency, for super loud output -- something in excess of 100dB, I suspect.
+The circuit board is 16x33mm and the piezo is 28mm diameter and 3mm thick, including resonance chamber. The autotransformer (11mm height) can be mounted either on the top or bottom of the PCB or off board, if needed for space.
 
-The piezo and autotransformer were sourced from a cheap "personal alarm". The latter is particularly difficult to bug anywhere else that I can find, though one could wind their own on a suitable former. The piezo has a low profile, aluminium sheet metal resonance cavity permanently attached to it, making for a small overall package.
+There are three status LEDs. Green, Blue and Red. They do, umm, stuff.
 
-The circuit board is 16x33mm and the piezo is 28mm diameter and 3mm thick. The autotransformer (11mm height) can be mounted either on the top or bottom of the PCB.
+Programming and status tones are emitted (at lower, close range tolerable volume levels!) using Morse code, which I consider better than counting beeps for programming and status reporting.
 
-There are three status LEDs.
+The alarm can work in either Normal or Inactivity mode.
 
-Programming and status tones are emitted (at lower, close range tolerable levels!) using Morse code. Mostly just single letters. Great for people who know Morse code. Still better than counting beeps for those who don't, once you learn just a few letters and a question mark and how they sound. Easy peasy. ;-)
+In Inactivity mode, ear peircing noise is made when there has been no receiver channel activity for a short while. Useful for cases where a dedicated RC channel is not available. Connect to aileron or elevator channel, for example.
 
-The alarm can work in either Normal or Inactivity mode. In Inactivity mode, the alarm will sound if there has been no activity (for a minute or two) on the RC channel the module is connected to. Useful for cases where a dedicate RC channel is not available. Just connect to aileron or elevator channel.
+Nomrml mode uses a dedicated receiver channel as a simple on/off switch. (Greater than or lower than mid point.)
 
 ## KiCAD v4 PCB Render
 <img src="img/kicad_render.png" width="320">
