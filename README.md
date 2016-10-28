@@ -1,5 +1,7 @@
 # Open Source RC Lost Model Alarm 
-## Programmable modes. LOUD!
+## Normal (manual switch) and Inactivity modes, programmable from TX. 
+## Resonated PIEZO
+## Loud!
 
 Quick notes ...
 
