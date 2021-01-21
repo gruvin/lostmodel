@@ -18,7 +18,7 @@ The alarm can work in either Normal or Inactivity mode.
 
 In Inactivity mode, ear peircing noise is made when there has been no receiver channel activity for a short while. Useful for cases where a dedicated RC channel is not available. Connect to aileron or elevator channel, for example.
 
-Nomrml mode uses a dedicated receiver channel as a simple on/off switch. (Greater than or lower than mid point.)
+Normal mode uses a dedicated receiver channel as a simple on/off switch. (Greater than or lower than mid point.)
 
 ## KiCAD v4 PCB Render
 <img src="img/kicad_render.png" width="320">
